@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlantLevel JSON Modder</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #2d2d2d;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-align: center;
+            width: 400px;
+        }
+        h2 { color: #4CAF50; margin-top: 0; }
+        p { font-size: 0.9rem; color: #aaa; }
+        input[type="file"] {
+            margin: 20px 0;
+            display: block;
+            width: 100%;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+            width: 100%;
+        }
+        button:hover { background-color: #45a049; }
+        button:disabled { background-color: #555; cursor: not-allowed; }
+        #status { margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Plant Level Modder</h2>
+    <p>Upload your <code>plantlevel.json</code> to set all Cost and PacketCooldown values to 0.</p>
+    
+    <input type="file" id="fileInput" accept=".json">
+    <button id="processBtn">Apply Mods & Download</button>
+    
+    <div id="status"></div>
+</div>
+
+<script>
+    document.getElementById('processBtn').addEventListener('click', function() {
+        const fileInput = document.getElementById('fileInput');
+        const status = document.getElementById('status');
+
+        if (fileInput.files.length === 0) {
+            status.style.color = "#ff5555";
+            status.innerText = "Please select a file first!";
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            try {
+                let json = JSON.parse(e.target.result);
+                let changeCount = 0;
+
+                // Recursive function to find and modify the keys
+                function modifyJson(obj) {
+                    if (Array.isArray(obj)) {
+                        obj.forEach(item => modifyJson(item));
+                    } else if (typeof obj === 'object' && obj !== null) {
+                        // Check for Name: Cost or Name: PacketCooldown
+                        if (obj.Name === "Cost" || obj.Name === "PacketCooldown") {
+                            if (obj.Values && Array.isArray(obj.Values)) {
+                                obj.Values = obj.Values.map(() => 0);
+                                changeCount++;
+                            }
+                        }
+                        // Continue searching deeper
+                        for (let key in obj) {
+                            modifyJson(obj[key]);
+                        }
+                    }
+                }
+
+                modifyJson(json);
+
+                // Create the download
+                const blob = new Blob([JSON.stringify(json, null, "\t")], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = "plantlevel_modded.json";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+                status.style.color = "#4CAF50";
+                status.innerText = `Success! Modified ${changeCount} entries.`;
+
+            } catch (err) {
+                status.style.color = "#ff5555";
+                status.innerText = "Error: Invalid JSON file.";
+                console.error(err);
+            }
+        };
+
+        reader.readAsText(file);
+    });
+</script>
+
+</body>
+</html>
